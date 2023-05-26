@@ -4,6 +4,6 @@
 
 import {AppRegistry} from 'react-native';
 import {name as appName} from './app.json';
-import Image from './src/Image';
+import ImageProject from './src/ImageProject';
 
-AppRegistry.registerComponent(appName, () => Image);
+AppRegistry.registerComponent(appName, () => ImageProject);
