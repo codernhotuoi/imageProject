@@ -9,6 +9,9 @@ import {
   Button,
   Image,
   FlatList,
+  SafeAreaView,
+  SectionList,
+  ScrollView,
 } from 'react-native';
 import React, {useState} from 'react';
 import RNFetchBlob from 'rn-fetch-blob';
@@ -16,7 +19,29 @@ import {CameraRoll} from '@react-native-camera-roll/camera-roll';
 import Video from 'react-native-video';
 const ImageProject = () => {
   const [pastedURL, setPastedURL] = useState('');
-  const [data, setData] = useState<any>();
+  const [dataVideo, setDataVideo] = useState<any>([]);
+  const [dataImg, setDataImg] = useState<any>([]);
+  const [isShow, setIsShow] = useState<boolean>(false);
+  // const DATA = [
+  //   {
+  //     title: 'Videos',
+  //     data: dataVideo,
+  //   },
+  //   {
+  //     title: 'Photos',
+  //     data: dataImg,
+  //   },
+  // ];
+  const DATA = [
+    {
+      title: 'Videos',
+      data: dataVideo,
+    },
+    {
+      title: 'Photos',
+      data: dataImg,
+    },
+  ];
   const requestStoragePermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
@@ -68,7 +93,6 @@ const ImageProject = () => {
         Alert.alert('file downloaded successfully ');
       });
   };
-  // console.log(photos);
   async function hasAndroidPermission() {
     const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
 
@@ -80,7 +104,24 @@ const ImageProject = () => {
     const status = await PermissionsAndroid.request(permission);
     return status === 'granted';
   }
-  const Gallery = async () => {
+  const handleShowImages = async () => {
+    if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
+      return;
+    }
+    CameraRoll.getPhotos({
+      first: 20,
+      assetType: 'Photos',
+    })
+      .then(r => {
+        setDataVideo([]);
+        setDataImg(r.edges);
+        setIsShow(true);
+      })
+      .catch(err => {
+        //Error Loading Images
+      });
+  };
+  const handleShowVideos = async () => {
     if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
       return;
     }
@@ -89,7 +130,9 @@ const ImageProject = () => {
       assetType: 'Videos',
     })
       .then(r => {
-        setData(r.edges);
+        setDataVideo(r.edges);
+        setDataImg([]);
+        setIsShow(false);
       })
       .catch(err => {
         //Error Loading Images
@@ -111,7 +154,7 @@ const ImageProject = () => {
     return formattedTime;
   };
   return (
-    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+    <View style={{flex: 1, alignItems: 'center'}}>
       <TextInput
         placeholder="enter/paste file url"
         style={{
@@ -147,60 +190,103 @@ const ImageProject = () => {
         }}>
         <Text style={{color: '#fff'}}>Download File</Text>
       </TouchableOpacity>
-      <Button title="get photo" onPress={() => Gallery()}></Button>
-
-      {/* <View style={{marginTop: 20}}>
-        <FlatList
-          data={data}
-          renderItem={({item}) => {
-            return (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  marginBottom: 10,
-                  alignItems: 'center',
-                  gap: 10,
-                }}>
-                <Image
-                  source={{
-                    uri: item.node.image.uri,
-                  }}
-                  style={{width: 100, height: 100}}></Image>
-                <View>
-                  <Text style={{fontSize: 12}}>
-                    {handleConvertTimestamp(item.node.timestamp)}
-                  </Text>
-                </View>
-              </View>
-            );
-          }}></FlatList>
-      </View> */}
-      <View style={{marginTop: 20}}>
-        <FlatList
-          data={data}
-          renderItem={({item}) => {
-            console.log(item.node.image.uri);
-            return (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  marginBottom: 10,
-                  alignItems: 'center',
-                  gap: 10,
-                }}>
-                <Video
-                  source={{uri: 'background'}} // Can be a URL or a local file.
-                  style={{height: 100, width: 100}}
-                />
-                <View>
-                  <Text style={{fontSize: 12}}>
-                    {handleConvertTimestamp(item.node.timestamp)}
-                  </Text>
-                </View>
-              </View>
-            );
-          }}></FlatList>
+      <View style={{flexDirection: 'row', gap: 20, marginTop: 20}}>
+        <Button title="Get Videos" onPress={() => handleShowVideos()}></Button>
+        <Button title="Get Photo" onPress={() => handleShowImages()}></Button>
       </View>
+      {/* <ScrollView>
+        {isShow ? (
+          <View style={{marginTop: 20}}>
+            <FlatList
+              showsVerticalScrollIndicator={false}
+              data={dataImg}
+              renderItem={({item}) => {
+                return (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      marginBottom: 10,
+                      alignItems: 'center',
+                      gap: 10,
+                    }}>
+                    
+                    <View>
+                      <Text style={{fontSize: 12}}>
+                        {handleConvertTimestamp(item.node.timestamp)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              }}></FlatList>
+          </View>
+        ) : (
+          <View style={{marginTop: 20}}>
+            <FlatList
+              showsVerticalScrollIndicator={false}
+              data={dataVideo}
+              renderItem={({item}) => {
+                console.log(item.node.image.uri);
+                return (
+                  <View
+                    style={{
+                      marginBottom: 10,
+                      alignItems: 'center',
+                      gap: 10,
+                    }}>
+                    
+                    <View>
+                      
+                    </View>
+                  </View>
+                );
+              }}></FlatList>
+          </View>
+        )}
+      </ScrollView> */}
+      <SectionList
+        sections={DATA}
+        keyExtractor={(item, index) => item + index}
+        renderItem={({item}) => {
+          return (
+            <View style={{marginTop: 20, alignItems: 'center'}}>
+              {item.node.type === 'video/mp4' ? (
+                <View style={{}}>
+                  <Video
+                    source={{
+                      uri: item.node.image.uri,
+                    }}
+                    resizeMode="cover"
+                    style={{flex: 1, width: 400}}
+                  />
+                  <Text style={{fontSize: 12}}>
+                    {handleConvertTimestamp(item.node.timestamp)}
+                  </Text>
+                </View>
+              ) : (
+                <View>
+                  <Image
+                    source={{
+                      uri: item.node.image.uri,
+                    }}
+                    style={{width: 100, height: 100}}></Image>
+                  <Text style={{fontSize: 12}}>
+                    {handleConvertTimestamp(item.node.timestamp)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        }}
+        renderSectionHeader={({section: {title}}) => (
+          <Text
+            style={{
+              fontSize: 32,
+              backgroundColor: '#fff',
+            }}>
+            {title}
+          </Text>
+        )}
+      />
     </View>
   );
 };
