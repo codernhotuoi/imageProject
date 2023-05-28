@@ -8,30 +8,23 @@ import {
   Platform,
   Button,
   Image,
-  FlatList,
-  SafeAreaView,
   SectionList,
-  ScrollView,
 } from 'react-native';
+import RNFS from 'react-native-fs';
+
 import React, {useState} from 'react';
 import RNFetchBlob from 'rn-fetch-blob';
 import {CameraRoll} from '@react-native-camera-roll/camera-roll';
 import Video from 'react-native-video';
+import {Dirs, FileSystem} from 'react-native-file-access';
+import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
 const ImageProject = () => {
   const [pastedURL, setPastedURL] = useState('');
+  //https://getsamplefiles.com/download/zip/sample-3.zip
   const [dataVideo, setDataVideo] = useState<any>([]);
   const [dataImg, setDataImg] = useState<any>([]);
   const [isShow, setIsShow] = useState<boolean>(false);
-  // const DATA = [
-  //   {
-  //     title: 'Videos',
-  //     data: dataVideo,
-  //   },
-  //   {
-  //     title: 'Photos',
-  //     data: dataImg,
-  //   },
-  // ];
+  const [progess, setProgess] = useState<number>(0);
   const DATA = [
     {
       title: 'Videos',
@@ -42,72 +35,33 @@ const ImageProject = () => {
       data: dataImg,
     },
   ];
-  const requestStoragePermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: 'Downloader App Storage Permission',
-          message:
-            'Downloader App needs access to your storage ' +
-            'so you can download files',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        },
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        downloadFile();
-      } else {
-        console.log('storage permission denied');
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
 
-  const downloadFile = () => {
-    const {config, fs} = RNFetchBlob;
+  const test = async () => {
+    const result = await unzip(
+      `/storage/emulated/0/Download/file1.zip`,
+      RNFS.DownloadDirectoryPath,
+    );
+    console.log(result);
+  };
+  subscribe(({progress, filePath}) => {
+    // the filePath is always empty on iOS for zipping.
+    // console.log(`progress: ${progress}\nprocessed at: ${filePath}`);
+    setProgess(progress);
+  });
+  const requestStoragePermission = async () => {
     const date = new Date();
-    const fileDir = fs.dirs.DownloadDir;
-    config({
-      // add this option that makes response data to be stored as a file,
-      // this is much more performant.
-      fileCache: true,
-      addAndroidDownloads: {
-        useDownloadManager: true,
-        notification: true,
-        path:
-          fileDir +
-          '/download_' +
-          Math.floor(date.getDate() + date.getSeconds() / 2),
-        description: 'file download',
-      },
+    RNFS.downloadFile({
+      fromUrl: pastedURL,
+      toFile: `/storage/emulated/0/Download/file1.zip`,
     })
-      .fetch('GET', pastedURL, {
-        //some headers ..
+      .promise.then(res => {
+        console.log('File downloaded at: ');
       })
-      .then(res => {
-        // the temp file path
-        console.log('The file saved to ', res.path());
-        Alert.alert('file downloaded successfully ');
+      .catch(error => {
+        console.log('Error while downloading: ', error);
       });
   };
-  async function hasAndroidPermission() {
-    const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
-
-    const hasPermission = await PermissionsAndroid.check(permission);
-    if (hasPermission) {
-      return true;
-    }
-
-    const status = await PermissionsAndroid.request(permission);
-    return status === 'granted';
-  }
   const handleShowImages = async () => {
-    if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
-      return;
-    }
     CameraRoll.getPhotos({
       first: 20,
       assetType: 'Photos',
@@ -118,13 +72,10 @@ const ImageProject = () => {
         setIsShow(true);
       })
       .catch(err => {
-        //Error Loading Images
+        console.log(err);
       });
   };
   const handleShowVideos = async () => {
-    if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
-      return;
-    }
     CameraRoll.getPhotos({
       first: 20,
       assetType: 'Videos',
@@ -135,7 +86,7 @@ const ImageProject = () => {
         setIsShow(false);
       })
       .catch(err => {
-        //Error Loading Images
+        console.log(err);
       });
   };
   const handleConvertTimestamp = (time: number) => {
@@ -191,59 +142,15 @@ const ImageProject = () => {
         <Text style={{color: '#fff'}}>Download File</Text>
       </TouchableOpacity>
       <View style={{flexDirection: 'row', gap: 20, marginTop: 20}}>
-        <Button title="Get Videos" onPress={() => handleShowVideos()}></Button>
-        <Button title="Get Photo" onPress={() => handleShowImages()}></Button>
+        {/* <Button title="Get Videos" onPress={() => handleShowVideos()}></Button>
+        <Button title="Get Photo" onPress={() => handleShowImages()}></Button> */}
+
+        <Button title="Un zip" onPress={() => test()}></Button>
       </View>
-      {/* <ScrollView>
-        {isShow ? (
-          <View style={{marginTop: 20}}>
-            <FlatList
-              showsVerticalScrollIndicator={false}
-              data={dataImg}
-              renderItem={({item}) => {
-                return (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      marginBottom: 10,
-                      alignItems: 'center',
-                      gap: 10,
-                    }}>
-                    
-                    <View>
-                      <Text style={{fontSize: 12}}>
-                        {handleConvertTimestamp(item.node.timestamp)}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              }}></FlatList>
-          </View>
-        ) : (
-          <View style={{marginTop: 20}}>
-            <FlatList
-              showsVerticalScrollIndicator={false}
-              data={dataVideo}
-              renderItem={({item}) => {
-                console.log(item.node.image.uri);
-                return (
-                  <View
-                    style={{
-                      marginBottom: 10,
-                      alignItems: 'center',
-                      gap: 10,
-                    }}>
-                    
-                    <View>
-                      
-                    </View>
-                  </View>
-                );
-              }}></FlatList>
-          </View>
-        )}
-      </ScrollView> */}
-      <SectionList
+      <View>
+        <Text>Giải nén được {Math.floor(progess * 100)} %</Text>
+      </View>
+      {/* <SectionList
         sections={DATA}
         keyExtractor={(item, index) => item + index}
         renderItem={({item}) => {
@@ -286,7 +193,7 @@ const ImageProject = () => {
             {title}
           </Text>
         )}
-      />
+      /> */}
     </View>
   );
 };
