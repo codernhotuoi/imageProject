@@ -48,7 +48,7 @@ const ImageProject = () => {
     // console.log(`progress: ${progress}\nprocessed at: ${filePath}`);
     setProgess(progress);
   });
-  const requestStoragePermission = async () => {
+  const downloadFile = async () => {
     const date = new Date();
     RNFS.downloadFile({
       fromUrl: pastedURL,
@@ -56,9 +56,11 @@ const ImageProject = () => {
     })
       .promise.then(res => {
         console.log('File downloaded at: ');
+        Alert.alert('file download is successed');
       })
       .catch(error => {
         console.log('Error while downloading: ', error);
+        Alert.alert(error);
       });
   };
   const handleShowImages = async () => {
@@ -134,7 +136,7 @@ const ImageProject = () => {
         }}
         onPress={() => {
           if (pastedURL !== '') {
-            requestStoragePermission();
+            downloadFile();
           } else {
             Alert.alert('Please Add URL');
           }
