@@ -35,13 +35,19 @@ const ImageProject = () => {
       data: dataImg,
     },
   ];
+  const getZipFile = (path: string): boolean => {
+    if (path.includes('.zip')) return true;
+    return false;
+  };
 
   const test = async () => {
-    const result = await unzip(
-      `/storage/emulated/0/Download/file1.zip`,
-      RNFS.DownloadDirectoryPath,
-    );
-    console.log(result);
+    const arrResult = await RNFS.readDir('/storage/emulated/0/Download/');
+    arrResult.forEach(async item => {
+      if (getZipFile(item.path)) {
+        const result = await unzip(item.path, RNFS.DownloadDirectoryPath);
+        console.log(result);
+      }
+    });
   };
   subscribe(({progress, filePath}) => {
     // the filePath is always empty on iOS for zipping.
@@ -52,7 +58,7 @@ const ImageProject = () => {
     const date = new Date();
     RNFS.downloadFile({
       fromUrl: pastedURL,
-      toFile: `/storage/emulated/0/Download/file1.zip`,
+      toFile: `/storage/emulated/0/Download/${date.getTime()}.zip`,
     })
       .promise.then(res => {
         console.log('File downloaded at: ');
@@ -69,6 +75,8 @@ const ImageProject = () => {
       assetType: 'Photos',
     })
       .then(r => {
+        // console.log();
+        r.edges.forEach(item => console.log(item));
         setDataVideo([]);
         setDataImg(r.edges);
         setIsShow(true);
@@ -144,15 +152,15 @@ const ImageProject = () => {
         <Text style={{color: '#fff'}}>Download File</Text>
       </TouchableOpacity>
       <View style={{flexDirection: 'row', gap: 20, marginTop: 20}}>
-        {/* <Button title="Get Videos" onPress={() => handleShowVideos()}></Button>
-        <Button title="Get Photo" onPress={() => handleShowImages()}></Button> */}
+        <Button title="Get Videos" onPress={() => handleShowVideos()}></Button>
+        <Button title="Get Photo" onPress={() => handleShowImages()}></Button>
 
         <Button title="Un zip" onPress={() => test()}></Button>
       </View>
       <View>
         <Text>Giải nén được {Math.floor(progess * 100)} %</Text>
       </View>
-      {/* <SectionList
+      <SectionList
         sections={DATA}
         keyExtractor={(item, index) => item + index}
         renderItem={({item}) => {
@@ -195,7 +203,7 @@ const ImageProject = () => {
             {title}
           </Text>
         )}
-      /> */}
+      />
     </View>
   );
 };
