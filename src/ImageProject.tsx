@@ -25,6 +25,7 @@ const ImageProject = () => {
   const [dataImg, setDataImg] = useState<any>([]);
   const [isShow, setIsShow] = useState<boolean>(false);
   const [progess, setProgess] = useState<number>(0);
+  const [file, setFile] = useState('');
   const DATA = [
     {
       title: 'Videos',
@@ -35,6 +36,11 @@ const ImageProject = () => {
       data: dataImg,
     },
   ];
+  const getFile = (path: string) => {
+    const index = path.lastIndexOf('.');
+    // console.log(index);
+    return path.slice(index);
+  };
   const getZipFile = (path: string): boolean => {
     if (path.includes('.zip')) return true;
     return false;
@@ -58,10 +64,12 @@ const ImageProject = () => {
     const date = new Date();
     RNFS.downloadFile({
       fromUrl: pastedURL,
-      toFile: `/storage/emulated/0/Download/${date.getTime()}.zip`,
+      toFile: `/storage/emulated/0/Download/${date.getTime()}${getFile(
+        pastedURL,
+      )}`,
     })
       .promise.then(res => {
-        console.log('File downloaded at: ');
+        console.log('File downloaded at: /storage/emulated/0/Download/');
         Alert.alert('file download is successed');
       })
       .catch(error => {
