@@ -45,7 +45,15 @@ const ImageProject = () => {
     if (path.includes('.zip')) return true;
     return false;
   };
-
+  const saveImageToCameraRoll = (imageUri: string) => {
+    CameraRoll.save(imageUri)
+      .then(() => {
+        console.log('Ảnh đã được lưu vào Camera Roll!');
+      })
+      .catch(error => {
+        console.log('Lỗi khi lưu ảnh vào Camera Roll:', error);
+      });
+  };
   const test = async () => {
     const arrResult = await RNFS.readDir('/storage/emulated/0/Download/');
     arrResult.forEach(async item => {
@@ -62,13 +70,15 @@ const ImageProject = () => {
   });
   const downloadFile = async () => {
     const date = new Date();
+    const toFile = `/storage/emulated/0/Download/${date.getTime()}${getFile(
+      pastedURL,
+    )}`;
     RNFS.downloadFile({
       fromUrl: pastedURL,
-      toFile: `/storage/emulated/0/Download/${date.getTime()}${getFile(
-        pastedURL,
-      )}`,
+      toFile: toFile,
     })
       .promise.then(res => {
+        saveImageToCameraRoll(toFile);
         console.log('File downloaded at: /storage/emulated/0/Download/');
         Alert.alert('file download is successed');
       })
@@ -81,10 +91,10 @@ const ImageProject = () => {
     CameraRoll.getPhotos({
       first: 20,
       assetType: 'Photos',
+      groupTypes: 'SavedPhotos',
     })
       .then(r => {
-        // console.log();
-        r.edges.forEach(item => console.log(item));
+        // r.edges.forEach(item => console.log(item));
         setDataVideo([]);
         setDataImg(r.edges);
         setIsShow(true);
@@ -172,18 +182,19 @@ const ImageProject = () => {
         sections={DATA}
         keyExtractor={(item, index) => item + index}
         renderItem={({item}) => {
+          console.log(item);
           return (
-            <View style={{marginTop: 20, alignItems: 'center'}}>
+            <View style={{alignItems: 'center'}}>
               {item.node.type === 'video/mp4' ? (
                 <View style={{}}>
                   <Video
                     source={{
                       uri: item.node.image.uri,
                     }}
-                    resizeMode="cover"
-                    style={{flex: 1, width: 400}}
+                    resizeMode="contain"
+                    style={{flex: 1, width: 400, height: 200}}
                   />
-                  <Text style={{fontSize: 12}}>
+                  <Text style={{fontSize: 12, position: 'absolute'}}>
                     {handleConvertTimestamp(item.node.timestamp)}
                   </Text>
                 </View>
