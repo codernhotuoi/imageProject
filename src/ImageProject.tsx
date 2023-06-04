@@ -1,7 +1,6 @@
 import {
   View,
   Text,
-  PermissionsAndroid,
   Alert,
   TextInput,
   TouchableOpacity,
@@ -11,7 +10,8 @@ import {
   SectionList,
 } from 'react-native';
 import RNFS from 'react-native-fs';
-
+import {PermissionsAndroid} from 'react-native';
+import Permissions from 'react-native-permissions';
 import React, {useState} from 'react';
 import RNFetchBlob from 'rn-fetch-blob';
 import {CameraRoll} from '@react-native-camera-roll/camera-roll';
@@ -19,13 +19,38 @@ import Video from 'react-native-video';
 import {Dirs, FileSystem} from 'react-native-file-access';
 import {zip, unzip, unzipAssets, subscribe} from 'react-native-zip-archive';
 const ImageProject = () => {
-  const [pastedURL, setPastedURL] = useState('');
-  //https://getsamplefiles.com/download/zip/sample-3.zip
+  const [pastedURL, setPastedURL] = useState(
+    'https://joylist.s3.us-east-2.amazonaws.com/profile/5f229e9cfa3dc8542f815cb9.HEIC',
+  );
+  //
   const [dataVideo, setDataVideo] = useState<any>([]);
   const [dataImg, setDataImg] = useState<any>([]);
   const [isShow, setIsShow] = useState<boolean>(false);
   const [progess, setProgess] = useState<number>(0);
-  const [file, setFile] = useState('');
+  const requestStoragePermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: 'Quyền truy cập ảnh',
+          message: 'Ứng dụng cần quyền truy cập vào thư viện ảnh để lưu ảnh.',
+          buttonNeutral: 'Hỏi lại sau',
+          buttonNegative: 'Từ chối',
+          buttonPositive: 'Đồng ý',
+        },
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Đã cấp quyền truy cập vào thư viện ảnh');
+        // Tiếp tục xử lý sau khi đã có quyền
+      } else {
+        console.log('Quyền truy cập vào thư viện ảnh bị từ chối');
+        // Xử lý khi quyền bị từ chối
+      }
+    } catch (error) {
+      console.log('Lỗi yêu cầu quyền truy cập vào thư viện ảnh:', error);
+    }
+  };
+  // requestStoragePermission();
   const DATA = [
     {
       title: 'Videos',
@@ -38,7 +63,6 @@ const ImageProject = () => {
   ];
   const getFile = (path: string) => {
     const index = path.lastIndexOf('.');
-    // console.log(index);
     return path.slice(index);
   };
   const getZipFile = (path: string): boolean => {
@@ -54,22 +78,21 @@ const ImageProject = () => {
         console.log('Lỗi khi lưu ảnh vào Camera Roll:', error);
       });
   };
+
   const test = async () => {
     const arrResult = await RNFS.readDir('/storage/emulated/0/Download/');
     arrResult.forEach(async item => {
       if (getZipFile(item.path)) {
         const result = await unzip(item.path, RNFS.DownloadDirectoryPath);
-        console.log(result);
       }
     });
   };
   subscribe(({progress, filePath}) => {
-    // the filePath is always empty on iOS for zipping.
-    // console.log(`progress: ${progress}\nprocessed at: ${filePath}`);
     setProgess(progress);
   });
   const downloadFile = async () => {
     const date = new Date();
+    console.log(getFile(pastedURL));
     const toFile = `/storage/emulated/0/Download/${date.getTime()}${getFile(
       pastedURL,
     )}`;
@@ -94,7 +117,6 @@ const ImageProject = () => {
       groupTypes: 'SavedPhotos',
     })
       .then(r => {
-        // r.edges.forEach(item => console.log(item));
         setDataVideo([]);
         setDataImg(r.edges);
         setIsShow(true);
@@ -172,7 +194,6 @@ const ImageProject = () => {
       <View style={{flexDirection: 'row', gap: 20, marginTop: 20}}>
         <Button title="Get Videos" onPress={() => handleShowVideos()}></Button>
         <Button title="Get Photo" onPress={() => handleShowImages()}></Button>
-
         <Button title="Un zip" onPress={() => test()}></Button>
       </View>
       <View>
@@ -182,35 +203,44 @@ const ImageProject = () => {
         sections={DATA}
         keyExtractor={(item, index) => item + index}
         renderItem={({item}) => {
-          console.log(item);
+          console.log(item.node);
           return (
-            <View style={{alignItems: 'center'}}>
-              {item.node.type === 'video/mp4' ? (
-                <View style={{}}>
-                  <Video
-                    source={{
-                      uri: item.node.image.uri,
-                    }}
-                    resizeMode="contain"
-                    style={{flex: 1, width: 400, height: 200}}
-                  />
-                  <Text style={{fontSize: 12, position: 'absolute'}}>
-                    {handleConvertTimestamp(item.node.timestamp)}
-                  </Text>
-                </View>
-              ) : (
-                <View>
-                  <Image
-                    source={{
-                      uri: item.node.image.uri,
-                    }}
-                    style={{width: 100, height: 100}}></Image>
-                  <Text style={{fontSize: 12}}>
-                    {handleConvertTimestamp(item.node.timestamp)}
-                  </Text>
+            <>
+              {(item.node.group_name === 'Movies' ||
+                item.node.group_name === 'Pictures') && (
+                <View style={{alignItems: 'center'}}>
+                  {item.node.type === 'video/mp4' ? (
+                    <View style={{}}>
+                      <Video
+                        source={{
+                          uri: item.node.image.uri,
+                        }}
+                        resizeMode="contain"
+                        style={{flex: 1, width: 400, height: 200}}
+                      />
+                      <Text style={{fontSize: 12, position: 'absolute'}}>
+                        {handleConvertTimestamp(
+                          item.node.modificationTimestamp,
+                        )}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View>
+                      <Image
+                        source={{
+                          uri: item.node.image.uri,
+                        }}
+                        style={{width: 100, height: 100}}></Image>
+                      <Text style={{fontSize: 12}}>
+                        {handleConvertTimestamp(
+                          item.node.modificationTimestamp,
+                        )}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               )}
-            </View>
+            </>
           );
         }}
         renderSectionHeader={({section: {title}}) => (
